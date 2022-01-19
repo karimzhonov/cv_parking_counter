@@ -16,11 +16,11 @@ python manage.py --run-detector ./assets/carPark.mp4
 ```
 --nonstop
 ```
-> If you want to pick new parking places and pick places with left button on mouse.
+> If you want to pick new parking places, pick places with left button on mouse.
 > 
 > If you want to delete some place, click one time right button.
 ```
 python manage.py --run-picker
 ```
 > If you have new things for this project connect me
-[khtkarimzhonov@stud.etu.ru](email://khtkarimzhonov@stud.etu.ru)
+```khtkarimzhonov@stud.etu.ru```
