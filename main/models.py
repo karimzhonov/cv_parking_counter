@@ -2,39 +2,45 @@ import cv2
 import numpy as np
 
 from main.utils import get_pos_list, set_pos_list, draw_place, put_text, is_end_video
-from config import CAR_WIDTH, CAR_HEIGHT, FPS, PLACE_CHECKING_CONST
+from config import FPS, PLACE_CHECKING_CONST
 
 
 class SpacePicker:
     win_name = 'Image'
+    x1_y1 = None
+    # pos_list = []
 
-    def __init__(self, src, car_width=CAR_WIDTH, car_height=CAR_HEIGHT, params=None):
+    def __init__(self, src, params=None):
         self.src = src
-        self.car_width = car_width
-        self.car_height = car_height
+        self.params = params
 
     @staticmethod
     def draw_places_from_pickle(img):
         pos_list = get_pos_list()
+        # pos_list = self.pos_list
 
-        for x, y, in pos_list:
-            img = draw_place(img, x, y, True)
+        for (x1, y1,), (x2, y2) in pos_list:
+            img = draw_place(img, (x1, y1), (x2, y2), True)
         return img
 
     def mouse_click(self):
         def callback_func(event, x, y, flags, params):
             pos_list = get_pos_list()
+            # pos_list = self.pos_list
 
             if event == cv2.EVENT_LBUTTONDOWN:
-                pos_list.append((x, y))
+                self.x1_y1 = (x, y)
+                # pos_list.append((x, y))
+            if event == cv2.EVENT_LBUTTONUP:
+                pos_list.append((self.x1_y1, (x, y)))
             if event == cv2.EVENT_RBUTTONDOWN:
-                for i, (x_pos, y_pos) in enumerate(pos_list):
-                    if x_pos < x < x_pos + self.car_width and y_pos < y < y_pos + self.car_height:
+                for i, ((x1, y1), (x2, y2)) in enumerate(pos_list):
+                    if x1 < x < x2 and y1 < y < y2:
                         pos_list.pop(i)
 
             set_pos_list(pos_list)
 
-        cv2.setMouseCallback(self.win_name, callback_func)
+        cv2.setMouseCallback(self.win_name, callback_func,)
 
     def imshow(self):
         video = cv2.VideoCapture(self.src)
@@ -47,6 +53,7 @@ class SpacePicker:
         return True
 
     def run(self):
+        print('[INFO] For pick space parking: mouse down and move mouse then mouse up')
         while self.imshow():
             self.mouse_click()
 
@@ -54,11 +61,9 @@ class SpacePicker:
 class Detector:
     win_name = 'Video'
 
-    def __init__(self, cap_name, car_width=CAR_WIDTH, car_height=CAR_HEIGHT, params=None):
+    def __init__(self, cap_name, params=None):
         self.cap_name = cap_name
         self.params = params
-        self.car_width = car_width
-        self.car_height = car_height
 
     @staticmethod
     def set_nonstop(cap: cv2.VideoCapture):
@@ -86,18 +91,19 @@ class Detector:
         img_dilate = cv2.dilate(img_median, kernel, iterations=1)
 
         pos_list = get_pos_list()
-        for x, y, in pos_list:
-            place = img_dilate[y: y + self.car_height, x: x + self.car_width]
+        for (x1, y1), (x2, y2) in pos_list:
+            place = img_dilate[y1: y2, x1: x2]
             isempty, text = self.checking_space(place)
             counter_empty_place += 1 if isempty else 0
-            img = draw_place(img, x, y, isempty)
-            put_text(img, x, y, text, scale=1, isempty=isempty)
-        put_text(img, 48, 0, f'Empty places: {counter_empty_place}, All places: {len(pos_list)}', scale=2, isempty=True)
+            img = draw_place(img, (x1, y1), (x2, y2), isempty)
+            put_text(img, x1, y1, text, scale=1, isempty=isempty)
+        put_text(img, 40, 40, f'Empty places: {counter_empty_place}, All places: {len(pos_list)}', scale=2, isempty=True)
         return img
 
     def run(self):
         video = cv2.VideoCapture(self.cap_name)
-        while True:
+        _, img = video.read()
+        while self.imshow(img):
             try:
                 if self.params['nonstop']:
                     self.set_nonstop(video)
@@ -108,7 +114,5 @@ class Detector:
             _, img = video.read()
 
             img = self.render(img)
-            if not self.imshow(img):
-                break
         cv2.destroyAllWindows()
         video.release()

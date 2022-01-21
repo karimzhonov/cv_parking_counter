@@ -1,7 +1,8 @@
 import pickle
 import cv2
+from threading import Thread
 
-from config import POS_LIST_PATH, EMPTY_COLOR, NO_EMPTY_COLOR, CAR_WIDTH, CAR_HEIGHT
+from config import POS_LIST_PATH, EMPTY_COLOR, NO_EMPTY_COLOR
 
 
 def arg_max(array:list):
@@ -16,9 +17,11 @@ def arg_max(array:list):
 
 def get_pathname_from_args(flags):
     try:
-        return flags[1]
+        return int(flags[1])
     except IndexError:
         return 0
+    except ValueError:
+        return flags[1]
 
 
 def get_pos_list():
@@ -31,16 +34,16 @@ def set_pos_list(pos_list):
         pickle.dump(pos_list, file)
 
 
-def draw_place(img,  left: int, top: int, isempty: bool):
+def draw_place(img,  x1_y1: tuple, x2_y2: tuple, isempty: bool):
     color = EMPTY_COLOR if isempty else NO_EMPTY_COLOR
-    return cv2.rectangle(img, (left, top), (left + CAR_WIDTH, top + CAR_HEIGHT), color, 3)
+    return cv2.rectangle(img, x1_y1, x2_y2, color, 3)
 
 
 def put_text(img, x, y, text, scale, isempty):
     import cvzone
     cvzone.putTextRect(img,
                        text=text,
-                       pos=(x, y + CAR_HEIGHT - 3),
+                       pos=(x, y + 10),
                        scale=scale, thickness=2, offset=0,
                        colorR=EMPTY_COLOR if isempty else NO_EMPTY_COLOR)
 
@@ -59,7 +62,7 @@ def run(sys_args):
 
         max_arg = arg_max(responses)
         _, render, params = handlers[max_arg]
-        render(_flags, params)
+        Thread(target=render, args=(_flags, params)).start()
 
     if len(sys_args) == 1:
         from main.views import help_render
